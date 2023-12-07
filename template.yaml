@@ -3,7 +3,7 @@ Transform: AWS::Serverless-2016-10-31
 
 Globals:
   Function:
-    Runtime: python3.11
+    Runtime: python3.12
     Handler: main.lambda_handler
 
 Resources:
@@ -18,4 +18,17 @@ Resources:
             - Sid: "KnowledgeBaseAccess"
               Effect: "Allow"
               Action: ["bedrock:RetrieveAndGenerate", "bedrock:InvokeModel", "bedrock:Retrieve"]
+              Resource: "*"
+
+  SyncKnowledgeBase:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/sync-knowledge-base/
+      Timeout: 300
+      MemorySize: 2048
+      Policies:
+        - Statement:
+            - Sid: "StartIngestionJob"
+              Effect: "Allow"
+              Action: ["bedrock:StartIngestionJob", "bedrock:AssociateThirdPartyKnowledgeBase"]
               Resource: "*"
