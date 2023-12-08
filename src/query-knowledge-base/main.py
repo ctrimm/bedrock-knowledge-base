@@ -28,9 +28,10 @@ def lambda_handler(event, context):
         "statusCode": 200,
         "headers": {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "*",
         },
-        "body": json.dumps(response["output"]["text"]),
+        "body": {
+            "text": json.dumps(response["output"]["text"]),
+            "sessionId": response["sessionId"],
+            "citations": response["citations"]
+        },
     }
