@@ -1,7 +1,11 @@
 import boto3
+import os
 
 
-def lambda_handler(event, context):
+def handler(event, context):
+    print("Starting syncing...")
+    print(os.environ)
+    print(os.environ['KB_NAME'])
     knowledge_base_id = event.get('knowledgeBaseId')
     data_source_id = event.get('dataSourceId')
 

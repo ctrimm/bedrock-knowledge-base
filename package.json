@@ -1,0 +1,27 @@
+{
+  "name": "knowledge-base-lambda",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bundle-prompt": "pip3 install --platform manylinux1_x86_64 --target=py-bundles/prompt-py-bundle --implementation cp --python-version 3.12 --only-binary=:all: --upgrade -r packages/functions/src/prompt/requirements.txt",
+    "bundle-sync": "pip3 install --platform manylinux1_x86_64 --target=py-bundles/sync-kb-py-bundle --implementation cp --python-version 3.12 --only-binary=:all: --upgrade -r packages/functions/src/sync-kb/requirements.txt",
+    "dev": "sst dev",
+    "build": "sst build",
+    "deploy": "sst deploy",
+    "remove": "sst remove",
+    "console": "sst console",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@tsconfig/node18": "^18.2.2",
+    "aws-cdk-lib": "2.110.1",
+    "bedrock-agents-cdk": "^0.0.6",
+    "constructs": "10.3.0",
+    "sst": "^2.38.4",
+    "typescript": "^5.3.3"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
+}
