@@ -9,8 +9,11 @@ def handler(event, context):
         region_name="us-east-1",
     )
 
-    input = event.get('input')
-    knowledge_base_id = event.get('knowledgeBaseId')
+    body = json.loads(event['body'])
+    input = body['input']
+    knowledge_base_id = body['knowledgeBaseId']
+
+    print(input, knowledge_base_id)
 
     response = bedrock_client.retrieve_and_generate(
         input={
