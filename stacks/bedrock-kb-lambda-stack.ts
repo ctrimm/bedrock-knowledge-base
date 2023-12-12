@@ -1,4 +1,4 @@
-import { StackContext, Function, Bucket } from "sst/constructs";
+import { StackContext, Function, Bucket, StaticSite } from "sst/constructs";
 import { BedrockKnowledgeBase } from "bedrock-agents-cdk";
 import * as iam from "aws-cdk-lib/aws-iam";
 
@@ -13,7 +13,7 @@ export function BedrockKbLambdaStack({ stack }: StackContext) {
     stack,
     "BedrockOpenSearchKnowledgeBase",
     {
-      name: "knowledge-base-sst",
+      name: `bedrock-kb-${stack.stage}`,
       roleArn:
         "arn:aws:iam::637732166235:role/service-role/AmazonBedrockExecutionRoleForKnowledgeBase_7yi0z",
       storageConfiguration: {
@@ -92,7 +92,17 @@ export function BedrockKbLambdaStack({ stack }: StackContext) {
     },
   });
 
+  const web = new StaticSite(stack, "web", {
+    path: "packages/web",
+    buildOutput: "dist",
+    buildCommand: "npm run build",
+    environment: {
+      VITE_APP_PROMPT_URL: promptFunction.url ?? "",
+    },
+  });
+
   stack.addOutputs({
     promptUrl: promptFunction.url,
+    webUrl: web.url,
   });
 }
