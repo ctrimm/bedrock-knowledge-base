@@ -10,23 +10,40 @@ def handler(event, context):
     )
 
     body = json.loads(event['body'])
-    input = body['input']
-    knowledge_base_id = body['knowledgeBaseId']
+    input = body.get('input')
+    knowledge_base_id = body.get('knowledgeBaseId')
+    session_id = body.get("sessionId")
 
-    print(input, knowledge_base_id)
+    print(input, knowledge_base_id, session_id)
 
-    response = bedrock_client.retrieve_and_generate(
-        input={
-            'text': input
-        },
-        retrieveAndGenerateConfiguration={
-            'type': 'KNOWLEDGE_BASE',
-            'knowledgeBaseConfiguration': {
-                'knowledgeBaseId': knowledge_base_id,
-                'modelArn': 'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-v2'
+    if( session_id is None):
+        response = bedrock_client.retrieve_and_generate(
+            input={
+                'text': input
+            },
+            retrieveAndGenerateConfiguration={
+                'type': 'KNOWLEDGE_BASE',
+                'knowledgeBaseConfiguration': {
+                    'knowledgeBaseId': knowledge_base_id,
+                    'modelArn': 'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-v2'
+                }
             }
-        }
-    )
+        )
+    else:
+        response = bedrock_client.retrieve_and_generate(
+            sessionId=session_id,
+            input={
+                'text': input
+            },
+            retrieveAndGenerateConfiguration={
+                'type': 'KNOWLEDGE_BASE',
+                'knowledgeBaseConfiguration': {
+                    'knowledgeBaseId': knowledge_base_id,
+                    'modelArn': 'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-v2'
+                }
+            }
+        )
+
 
     return {
         "statusCode": 200,
