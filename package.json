@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "bundle-prompt": "pip3 install --platform manylinux1_x86_64 --target=py-bundles/prompt-py-bundle --implementation cp --python-version 3.12 --only-binary=:all: --upgrade -r packages/functions/src/prompt/requirements.txt",
-    "bundle-sync": "pip3 install --platform manylinux1_x86_64 --target=py-bundles/sync-kb-py-bundle --implementation cp --python-version 3.12 --only-binary=:all: --upgrade -r packages/functions/src/sync-kb/requirements.txt",
+    "bundle-sync-kb": "pip3 install --platform manylinux1_x86_64 --target=py-bundles/sync-kb-py-bundle --implementation cp --python-version 3.12 --only-binary=:all: --upgrade -r packages/functions/src/sync-kb/requirements.txt",
     "dev": "sst dev",
     "build": "sst build",
     "deploy": "sst deploy",

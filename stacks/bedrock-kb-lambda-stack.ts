@@ -2,17 +2,11 @@ import { StackContext, Function, Bucket } from "sst/constructs";
 import { BedrockKnowledgeBase } from "bedrock-agents-cdk";
 import * as iam from "aws-cdk-lib/aws-iam";
 
-export function BedrockKbLambdaStack({ stack }: StackContext) {
-  const promptFunction = new Function(stack, "prompt", {
-    runtime: "python3.12",
-    handler: "packages/functions/src/prompt/lambda.handler",
-    python: {
-      noDocker: true,
-    },
-    copyFiles: [{ from: "py-bundles/prompt-py-bundle", to: "./" }],
-    url: true,
-  });
+function getPyBundlePath(name: string) {
+  return `py-bundles/${name}-py-bundle`;
+}
 
+export function BedrockKbLambdaStack({ stack }: StackContext) {
   const kbDocumentsBucket = new Bucket(stack, "kb-documents");
 
   const bedrockKb = new BedrockKnowledgeBase(
@@ -25,7 +19,7 @@ export function BedrockKbLambdaStack({ stack }: StackContext) {
       storageConfiguration: {
         pineconeConfiguration: {
           connectionString:
-            "https://kb-sst-test-3xrbu48.svc.gcp-starter.pinecone.io",
+            "https://bedrock-kb-3xrbu48.svc.gcp-starter.pinecone.io",
           credentialsSecretArn:
             "arn:aws:secretsmanager:us-east-1:637732166235:secret:pinecon-api-ley-JTCk8V",
           fieldMapping: {
@@ -45,18 +39,40 @@ export function BedrockKbLambdaStack({ stack }: StackContext) {
     }
   );
 
+  const promptFunction = new Function(stack, "prompt", {
+    runtime: "python3.12",
+    handler: "packages/functions/src/prompt/lambda.handler",
+    python: {
+      noDocker: true,
+    },
+    copyFiles: [{ from: getPyBundlePath("prompt"), to: "./" }],
+    url: true,
+    timeout: "1 minute",
+  });
+  promptFunction.addToRolePolicy(
+    new iam.PolicyStatement({
+      sid: "StartIngestionJob",
+      effect: iam.Effect.ALLOW,
+      actions: [
+        "bedrock:RetrieveAndGenerate",
+        "bedrock:Retrieve",
+        "bedrock:InvokeModel",
+      ],
+      resources: ["*"],
+    })
+  );
+
   const syncKnowledgeBaseFunction = new Function(stack, "sync-kb", {
     runtime: "python3.12",
     handler: "packages/functions/src/sync-kb/lambda.handler",
     python: {
       noDocker: true,
     },
-    copyFiles: [{ from: "py-bundles/sync-kb-py-bundle", to: "./" }],
+    copyFiles: [{ from: getPyBundlePath("sync-kb"), to: "./" }],
     environment: {
       KB_NAME: bedrockKb.name,
     },
   });
-
   syncKnowledgeBaseFunction.addToRolePolicy(
     new iam.PolicyStatement({
       sid: "StartIngestionJob",
@@ -70,7 +86,10 @@ export function BedrockKbLambdaStack({ stack }: StackContext) {
   );
 
   kbDocumentsBucket.addNotifications(stack, {
-    syncKnowledgeBase: { function: syncKnowledgeBaseFunction, events: ["object_created", "object_removed"] },
+    syncKnowledgeBase: {
+      function: syncKnowledgeBaseFunction,
+      events: ["object_created", "object_removed"],
+    },
   });
 
   stack.addOutputs({
