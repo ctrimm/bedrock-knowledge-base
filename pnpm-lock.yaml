@@ -21,8 +21,8 @@ importers:
         specifier: 10.3.0
         version: 10.3.0
       sst:
-        specifier: ^2.38.4
-        version: 2.38.4
+        specifier: 2.38.7
+        version: 2.38.7
       typescript:
         specifier: ^5.3.3
         version: 5.3.3
@@ -3705,7 +3705,7 @@ packages:
     resolution: {integrity: sha512-xq+q3SRMOxGivLhBNaUdC64hDTQwejJ+H0T/NB1XMtTVEwNTrfFF3gAxiyW0Bu/xWEGhjVKgUcMhCrUy2+uCWg==}
     dependencies:
       base64-js: 1.5.1
-      ieee754: 1.1.13
+      ieee754: 1.2.1
       isarray: 1.0.0
     dev: true
 
@@ -3903,7 +3903,7 @@ packages:
     resolution: {integrity: sha512-rraC8NXWOEjhADbZe9QBNzLAN5Q3fsTPQtBV+fEVj6xKIgDgNiEVE6ZNfHpZOqfQ21YUzfVNUXLOEZquYvQPPg==}
     dependencies:
       leven: 2.1.0
-      minimist: 1.2.6
+      minimist: 1.2.8
     dev: true
 
   /compress-commons@4.1.2:
@@ -5400,7 +5400,7 @@ packages:
       duplexify: 4.1.2
       help-me: 3.0.0
       inherits: 2.0.4
-      minimist: 1.2.6
+      minimist: 1.2.8
       mqtt-packet: 6.10.0
       pump: 3.0.0
       readable-stream: 3.6.2
@@ -6084,8 +6084,8 @@ packages:
       fsevents: 2.3.2
     dev: true
 
-  /sst@2.38.4:
-    resolution: {integrity: sha512-tpJg/PXGGW80rD6DpdueFEXfEqF0kOBzD1NwrwrmhkPspYFcQoai48ijxQtTnO1x5JWjJs0oOGBeOuHXxuAp6Q==}
+  /sst@2.38.7:
+    resolution: {integrity: sha512-1bwPv/8suQQ5qXybAN1C7oHB7gjA/daRCI0TY/jTjgQn7ebJRvCvsoYtoJsf7q3ToPf1xc5X+yo7p0vyeLvmSA==}
     hasBin: true
     peerDependencies:
       '@sls-next/lambda-at-edge': ^3.7.0
