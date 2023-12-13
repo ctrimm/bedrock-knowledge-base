@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@tsconfig/node18": "^18.2.2",
+    "@types/node": "^20.10.4",
     "aws-cdk-lib": "2.110.1",
     "bedrock-agents-cdk": "^0.0.7",
     "constructs": "10.3.0",

@@ -1,6 +1,8 @@
 import { StackContext, Function, Bucket, StaticSite } from "sst/constructs";
 import { BedrockKnowledgeBase } from "bedrock-agents-cdk";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import { SecretValue } from "aws-cdk-lib";
 
 function getPyBundlePath(name: string) {
   return `py-bundles/${name}-py-bundle`;
@@ -8,6 +10,16 @@ function getPyBundlePath(name: string) {
 
 export function BedrockKbLambdaStack({ stack }: StackContext) {
   const kbDocumentsBucket = new Bucket(stack, "bedrock-kb-documents");
+
+  const apiKeyPineconeSecret = new secretsmanager.Secret(
+    stack,
+    "api-key-pinecone-secret",
+    {
+      secretObjectValue: {
+        apiKey: SecretValue.unsafePlainText(process.env.PINECONE_API_KEY ?? ""),
+      },
+    }
+  );
 
   const bedrockKbRole = new iam.Role(stack, "bedrock-kb-role", {
     roleName: `AmazonBedrockExecutionRoleForKnowledgeBase_bkb-${stack.stage}`,
@@ -65,9 +77,7 @@ export function BedrockKbLambdaStack({ stack }: StackContext) {
           new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: ["secretsmanager:GetSecretValue"],
-            resources: [
-              "arn:aws:secretsmanager:us-east-1:637732166235:secret:pinecon-api-ley-JTCk8V",
-            ],
+            resources: [apiKeyPineconeSecret.secretArn],
           }),
         ],
       }),
@@ -79,10 +89,8 @@ export function BedrockKbLambdaStack({ stack }: StackContext) {
     roleArn: bedrockKbRole.roleArn,
     storageConfiguration: {
       pineconeConfiguration: {
-        connectionString:
-          "https://bedrock-kb-3xrbu48.svc.gcp-starter.pinecone.io",
-        credentialsSecretArn:
-          "arn:aws:secretsmanager:us-east-1:637732166235:secret:pinecon-api-ley-JTCk8V",
+        connectionString: process.env.PINECONE_CONNECTION_STRING ?? "",
+        credentialsSecretArn: apiKeyPineconeSecret.secretArn,
         fieldMapping: {
           metadataField: "metadata",
           textField: "text",
