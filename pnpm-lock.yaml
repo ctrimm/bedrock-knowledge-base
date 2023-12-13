@@ -15,8 +15,8 @@ importers:
         specifier: 2.110.1
         version: 2.110.1(constructs@10.3.0)
       bedrock-agents-cdk:
-        specifier: ^0.0.6
-        version: 0.0.6(aws-cdk-lib@2.110.1)(constructs@10.3.0)
+        specifier: ^0.0.7
+        version: 0.0.7(aws-cdk-lib@2.110.1)(constructs@10.3.0)
       constructs:
         specifier: 10.3.0
         version: 10.3.0
@@ -3603,10 +3603,10 @@ packages:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
     dev: true
 
-  /bedrock-agents-cdk@0.0.6(aws-cdk-lib@2.110.1)(constructs@10.3.0):
-    resolution: {integrity: sha512-NMJP7k6/+zWfi9ySTN5/nV1ZPblAHIMTgMJfpUNCYw2ygJ3lYORBYnM5Kuaf9lwWVdQQKH1d2HSBwdw9tzyMtw==}
+  /bedrock-agents-cdk@0.0.7(aws-cdk-lib@2.110.1)(constructs@10.3.0):
+    resolution: {integrity: sha512-y0b0QdqAd1c3rCdfKuqaZ+5nIlvx5w7MMfvXe2FPw7kbtl7yIH0bqXt67qs2kZSfpuh1xDeBFhFI9Nsn+2DNKg==}
     peerDependencies:
-      aws-cdk-lib: ^2.1.0
+      aws-cdk-lib: ^2.109.0
       constructs: ^10.0.5
     dependencies:
       aws-cdk-lib: 2.110.1(constructs@10.3.0)

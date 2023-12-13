@@ -4,9 +4,6 @@ import os
 
 def handler(event, context):
     print("Starting syncing...")
-    print(os.environ['KB_NAME'])
-    knowledge_base_id = event.get('knowledgeBaseId')
-    data_source_id = event.get('dataSourceId')
 
     bedrock_client = boto3.client(
         service_name="bedrock-agent",
@@ -14,8 +11,8 @@ def handler(event, context):
     )
 
     response = bedrock_client.start_ingestion_job(
-        knowledgeBaseId=knowledge_base_id,
-        dataSourceId=data_source_id,
+        knowledgeBaseId=os.environ['KNOWLEDGE_BASE_ID'],
+        dataSourceId=os.environ['DATA_SOURCE_ID'],
     )
 
     return {

@@ -1,5 +1,6 @@
 import boto3
 import json
+import os
 
 
 def handler(event, context):
@@ -11,12 +12,11 @@ def handler(event, context):
 
     body = json.loads(event['body'])
     input = body.get('input')
-    knowledge_base_id = body.get('knowledgeBaseId')
     session_id = body.get("sessionId")
 
-    print(input, knowledge_base_id, session_id)
+    print(input)
 
-    if( session_id is None):
+    if (session_id is None):
         response = bedrock_client.retrieve_and_generate(
             input={
                 'text': input
@@ -24,7 +24,7 @@ def handler(event, context):
             retrieveAndGenerateConfiguration={
                 'type': 'KNOWLEDGE_BASE',
                 'knowledgeBaseConfiguration': {
-                    'knowledgeBaseId': knowledge_base_id,
+                    'knowledgeBaseId': os.environ['KNOWLEDGE_BASE_ID'],
                     'modelArn': 'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-v2'
                 }
             }
@@ -38,12 +38,11 @@ def handler(event, context):
             retrieveAndGenerateConfiguration={
                 'type': 'KNOWLEDGE_BASE',
                 'knowledgeBaseConfiguration': {
-                    'knowledgeBaseId': knowledge_base_id,
+                    'knowledgeBaseId': os.environ['KNOWLEDGE_BASE_ID'],
                     'modelArn': 'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-v2'
                 }
             }
         )
-
 
     return {
         "statusCode": 200,

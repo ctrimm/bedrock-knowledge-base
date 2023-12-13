@@ -108,6 +108,9 @@ export function BedrockKbLambdaStack({ stack }: StackContext) {
     copyFiles: [{ from: getPyBundlePath("prompt"), to: "./" }],
     url: true,
     timeout: "1 minute",
+    environment: {
+      KNOWLEDGE_BASE_ID: bedrockKb.knowledgeBaseId,
+    },
   });
   promptFunction.addToRolePolicy(
     new iam.PolicyStatement({
@@ -129,7 +132,8 @@ export function BedrockKbLambdaStack({ stack }: StackContext) {
     },
     copyFiles: [{ from: getPyBundlePath("sync-kb"), to: "./" }],
     environment: {
-      KB_NAME: bedrockKb.name,
+      KNOWLEDGE_BASE_ID: bedrockKb.knowledgeBaseId,
+      DATA_SOURCE_ID: bedrockKb.dataSourceId,
     },
   });
   syncKnowledgeBaseFunction.addToRolePolicy(
