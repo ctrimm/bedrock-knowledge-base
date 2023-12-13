@@ -40,7 +40,7 @@ export function BedrockKbLambdaStack({ stack }: StackContext) {
             sid: "S3ListBucketStatement",
             effect: iam.Effect.ALLOW,
             actions: ["s3:ListBucket"],
-            resources: [`${kbDocumentsBucket.bucketArn}/*`],
+            resources: [kbDocumentsBucket.bucketArn],
             conditions: {
               ["StringEquals"]: {
                 "aws:ResourceAccount": stack.account,
