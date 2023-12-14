@@ -1,11 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import React, { useEffect } from "react";
 
-const promptKb = async (
-  sessionId: string | undefined,
-  text: string,
-  kbId: string
-) => {
+const promptKb = async (sessionId: string | undefined, text: string) => {
   const fetchResponse = await fetch(import.meta.env.VITE_APP_PROMPT_URL, {
     method: "POST",
     headers: {
@@ -13,7 +9,6 @@ const promptKb = async (
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      knowledgeBaseId: kbId,
       input: text,
       sessionId,
     }),
@@ -27,14 +22,13 @@ const promptKb = async (
 function App() {
   const [sessionId, setSessionId] = React.useState<string>();
   const [currentUserText, setCurrentUserText] = React.useState("");
-  const [kbId, setKbId] = React.useState("");
   const [texts, setTexts] = React.useState([] as string[]);
 
   const prompt = useQuery({
     queryKey: ["prompt", texts],
     queryFn: () => {
       if (texts.length) {
-        return promptKb(sessionId, texts[texts.length - 1], kbId);
+        return promptKb(sessionId, texts[texts.length - 1]);
       }
       return null;
     },
@@ -54,12 +48,6 @@ function App() {
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <p>Current session: {sessionId}</p>
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <p>Knowledge Base Id:</p>
-        <div>
-          <input onChange={(event) => setKbId(event.target.value)} />
-        </div>
-      </div>
 
       <div>
         <input
