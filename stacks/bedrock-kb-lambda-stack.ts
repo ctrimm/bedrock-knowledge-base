@@ -128,7 +128,7 @@ export function BedrockKbLambdaStack({ stack }: StackContext) {
         "bedrock:Retrieve",
         "bedrock:InvokeModel",
       ],
-      resources: ["*"], // TODO: Use only the recently created knowledge base arn
+      resources: ["*"],
     })
   );
 
