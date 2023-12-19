@@ -4,12 +4,12 @@ This is a proof of concept that uses Amazon Bedrock to create a chatbot.
 
 It uses: 
 - [SST](https://sst.dev/) to deploy everything to AWS.
-- [Pinecone](https://www.pinecone.io/) as vector database to use the free tier and avoid fees.
+- [Pinecone](https://www.pinecone.io/) as vector database to use the free tier and avoid charges (you can use OpenSearch or a different vector database).
 - [Lambda functions](https://aws.amazon.com/lambda/) in Python via [boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html) to communicate to Amazon Bedrock.
 
 ## Architecture
 
-<img alt="SST" src="https://raw.githubusercontent.com/merojosa/knowledge-base-lambda/main/assets/architecture.png" />
+<img src="https://raw.githubusercontent.com/merojosa/knowledge-base-lambda/main/assets/architecture.png" />
 
 
 ## Get started
