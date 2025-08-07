@@ -1,178 +1,241 @@
-import { StackContext, Function, Bucket, StaticSite } from "sst/constructs";
-import { BedrockKnowledgeBase } from "bedrock-agents-cdk";
-import * as iam from "aws-cdk-lib/aws-iam";
-import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
-import { SecretValue } from "aws-cdk-lib";
+import * as aws from "@pulumi/aws";
 
-function getPyBundlePath(name: string) {
-  return `py-bundles/${name}-py-bundle`;
-}
+export const kbDocumentsBucket = new sst.aws.Bucket("bedrock-kb-documents");
 
-export function BedrockKbLambdaStack({ stack }: StackContext) {
-  const kbDocumentsBucket = new Bucket(stack, "bedrock-kb-documents");
+// Aurora PostgreSQL Serverless v2 for vector storage
+const auroraSubnetGroup = new aws.rds.SubnetGroup("aurora-subnet-group", {
+  subnetIds: $aws.ec2.getSubnets({
+    filters: [{ name: "default-for-az", values: ["true"] }]
+  }).then(subnets => subnets.ids),
+  tags: {
+    Name: "Aurora subnet group for Bedrock KB",
+  },
+});
 
-  const apiKeyPineconeSecret = new secretsmanager.Secret(
-    stack,
-    "api-key-pinecone-secret",
+const auroraSecurityGroup = new aws.ec2.SecurityGroup("aurora-security-group", {
+  description: "Security group for Aurora PostgreSQL cluster",
+  vpcId: $aws.ec2.getVpc({ default: true }).then(vpc => vpc.id),
+  ingress: [
     {
-      secretObjectValue: {
-        apiKey: SecretValue.unsafePlainText(process.env.PINECONE_API_KEY ?? ""),
-      },
-    }
-  );
+      fromPort: 5432,
+      toPort: 5432,
+      protocol: "tcp",
+      cidrBlocks: ["10.0.0.0/8"],
+    },
+  ],
+  egress: [
+    {
+      fromPort: 0,
+      toPort: 0,
+      protocol: "-1",
+      cidrBlocks: ["0.0.0.0/0"],
+    },
+  ],
+});
 
-  const bedrockKbRole = new iam.Role(stack, "bedrock-kb-role", {
-    roleName: `AmazonBedrockExecutionRoleForKnowledgeBase_bkb-${stack.stage}`,
-    description: "IAM role to create a Bedrock Knowledge Base",
-    assumedBy: new iam.ServicePrincipal("bedrock.amazonaws.com", {
-      conditions: {
-        ["StringEquals"]: {
-          "aws:SourceAccount": stack.account,
+export const auroraCluster = new aws.rds.Cluster("bedrock-kb-aurora", {
+  engine: "aurora-postgresql",
+  engineVersion: "15.4",
+  engineMode: "provisioned",
+  serverlessv2ScalingConfiguration: {
+    maxCapacity: 4,
+    minCapacity: 0.5,
+  },
+  databaseName: "bedrock_kb",
+  masterUsername: "postgres",
+  manageMasterUserPassword: true,
+  skipFinalSnapshot: true,
+  dbSubnetGroupName: auroraSubnetGroup.name,
+  vpcSecurityGroupIds: [auroraSecurityGroup.id],
+});
+
+new aws.rds.ClusterInstance("bedrock-kb-aurora-instance", {
+  clusterIdentifier: auroraCluster.id,
+  instanceClass: "db.serverless",
+  engine: auroraCluster.engine,
+  engineVersion: auroraCluster.engineVersion,
+});
+
+const bedrockKbRole = new aws.iam.Role("bedrock-kb-role", {
+  name: `AmazonBedrockExecutionRoleForKnowledgeBase_bkb-${$app.stage}`,
+  description: "IAM role to create a Bedrock Knowledge Base",
+  assumeRolePolicy: JSON.stringify({
+    Version: "2012-10-17",
+    Statement: [
+      {
+        Effect: "Allow",
+        Principal: {
+          Service: "bedrock.amazonaws.com",
         },
-        ["ArnLike"]: {
-          "aws:SourceArn": `arn:aws:bedrock:us-east-1:${stack.account}:knowledge-base/*`,
+        Action: "sts:AssumeRole",
+        Condition: {
+          StringEquals: {
+            "aws:SourceAccount": $aws.getCallerIdentity({}).then(id => id.accountId),
+          },
+          ArnLike: {
+            "aws:SourceArn": $aws.getCallerIdentity({}).then(id => `arn:aws:bedrock:us-east-1:${id.accountId}:knowledge-base/*`),
+          },
         },
       },
-    }),
-    managedPolicies: [
-      new iam.ManagedPolicy(stack, "bedrock-kb-invoke", {
-        statements: [
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ["bedrock:InvokeModel"],
-            resources: [
-              "arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-embed-text-v1",
-            ],
-          }),
-        ],
-      }),
-      new iam.ManagedPolicy(stack, "bedrock-kb-s3-managed-policy", {
-        statements: [
-          new iam.PolicyStatement({
-            sid: "S3ListBucketStatement",
-            effect: iam.Effect.ALLOW,
-            actions: ["s3:ListBucket"],
-            resources: [kbDocumentsBucket.bucketArn],
-            conditions: {
-              ["StringEquals"]: {
-                "aws:ResourceAccount": stack.account,
-              },
-            },
-          }),
-          new iam.PolicyStatement({
-            sid: "S3GetObjectStatement",
-            effect: iam.Effect.ALLOW,
-            actions: ["s3:GetObject"],
-            resources: [`${kbDocumentsBucket.bucketArn}/*`],
-            conditions: {
-              ["StringEquals"]: {
-                "aws:ResourceAccount": stack.account,
-              },
-            },
-          }),
-        ],
-      }),
-      new iam.ManagedPolicy(stack, "bedrock-kb-secret-manager", {
-        statements: [
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ["secretsmanager:GetSecretValue"],
-            resources: [apiKeyPineconeSecret.secretArn],
-          }),
-        ],
-      }),
     ],
-  });
+  }),
+});
 
-  const bedrockKb = new BedrockKnowledgeBase(stack, "bedrock-knowledge-base", {
-    name: `bedrock-kb-${stack.stage}`,
-    roleArn: bedrockKbRole.roleArn,
-    storageConfiguration: {
-      pineconeConfiguration: {
-        connectionString: process.env.PINECONE_CONNECTION_STRING ?? "",
-        credentialsSecretArn: apiKeyPineconeSecret.secretArn,
-        fieldMapping: {
-          metadataField: "metadata",
-          textField: "text",
+new aws.iam.RolePolicyAttachment("bedrock-kb-invoke-policy", {
+  role: bedrockKbRole.name,
+  policyArn: new aws.iam.Policy("bedrock-kb-invoke", {
+    policy: JSON.stringify({
+      Version: "2012-10-17",
+      Statement: [
+        {
+          Effect: "Allow",
+          Action: ["bedrock:InvokeModel"],
+          Resource: ["arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-embed-text-v1"],
         },
-      },
-      type: "PINECONE",
-    },
-    dataSource: {
-      dataSourceConfiguration: {
-        s3Configuration: {
-          bucketArn: kbDocumentsBucket.bucketArn,
+      ],
+    }),
+  }).arn,
+});
+
+new aws.iam.RolePolicyAttachment("bedrock-kb-s3-policy", {
+  role: bedrockKbRole.name,
+  policyArn: new aws.iam.Policy("bedrock-kb-s3-managed-policy", {
+    policy: kbDocumentsBucket.arn.apply(bucketArn => JSON.stringify({
+      Version: "2012-10-17",
+      Statement: [
+        {
+          Sid: "S3ListBucketStatement",
+          Effect: "Allow",
+          Action: ["s3:ListBucket"],
+          Resource: [bucketArn],
+          Condition: {
+            StringEquals: {
+              "aws:ResourceAccount": $aws.getCallerIdentity({}).then(id => id.accountId),
+            },
+          },
         },
-      },
-    },
-  });
-
-  const promptFunction = new Function(stack, "prompt", {
-    runtime: "python3.12",
-    handler: "packages/functions/src/prompt/lambda.handler",
-    python: {
-      noDocker: true,
-    },
-    copyFiles: [{ from: getPyBundlePath("prompt"), to: "./" }],
-    url: true,
-    timeout: "1 minute",
-    environment: {
-      KNOWLEDGE_BASE_ID: bedrockKb.knowledgeBaseId,
-    },
-  });
-  promptFunction.addToRolePolicy(
-    new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
-        "bedrock:RetrieveAndGenerate",
-        "bedrock:Retrieve",
-        "bedrock:InvokeModel",
+        {
+          Sid: "S3GetObjectStatement",
+          Effect: "Allow",
+          Action: ["s3:GetObject"],
+          Resource: [`${bucketArn}/*`],
+          Condition: {
+            StringEquals: {
+              "aws:ResourceAccount": $aws.getCallerIdentity({}).then(id => id.accountId),
+            },
+          },
+        },
       ],
-      resources: ["*"],
-    })
-  );
+    })),
+  }).arn,
+});
 
-  const syncKnowledgeBaseFunction = new Function(stack, "sync-kb", {
-    runtime: "python3.12",
-    handler: "packages/functions/src/sync-kb/lambda.handler",
-    python: {
-      noDocker: true,
-    },
-    copyFiles: [{ from: getPyBundlePath("sync-kb"), to: "./" }],
-    environment: {
-      KNOWLEDGE_BASE_ID: bedrockKb.knowledgeBaseId,
-      DATA_SOURCE_ID: bedrockKb.dataSourceId,
-    },
-  });
-  syncKnowledgeBaseFunction.addToRolePolicy(
-    new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
-        "bedrock:StartIngestionJob",
-        "bedrock:AssociateThirdPartyKnowledgeBase",
+new aws.iam.RolePolicyAttachment("bedrock-kb-rds-policy", {
+  role: bedrockKbRole.name,
+  policyArn: new aws.iam.Policy("bedrock-kb-rds", {
+    policy: auroraCluster.arn.apply(clusterArn => JSON.stringify({
+      Version: "2012-10-17",
+      Statement: [
+        {
+          Effect: "Allow",
+          Action: [
+            "rds-data:BatchExecuteStatement",
+            "rds-data:BeginTransaction",
+            "rds-data:CommitTransaction",
+            "rds-data:ExecuteStatement",
+            "rds-data:RollbackTransaction",
+          ],
+          Resource: [clusterArn],
+        },
       ],
-      resources: ["*"],
-    })
-  );
+    })),
+  }).arn,
+});
 
-  kbDocumentsBucket.addNotifications(stack, {
-    syncKnowledgeBase: {
-      function: syncKnowledgeBaseFunction,
-      events: ["object_created", "object_removed"],
+export const promptFunction = new sst.aws.Function("prompt", {
+  handler: "packages/functions/src/prompt/lambda.handler",
+  runtime: "nodejs20.x",
+  timeout: "1 minute",
+  environment: {
+    KNOWLEDGE_BASE_ID: process.env.KNOWLEDGE_BASE_ID || "placeholder-kb-id",
+  },
+  url: true,
+});
+
+new aws.iam.RolePolicyAttachment("prompt-function-bedrock-policy", {
+  role: promptFunction.nodes.function.role?.name!,
+  policyArn: new aws.iam.Policy("prompt-function-bedrock", {
+    policy: JSON.stringify({
+      Version: "2012-10-17",
+      Statement: [
+        {
+          Effect: "Allow",
+          Action: [
+            "bedrock:RetrieveAndGenerate",
+            "bedrock:Retrieve",
+            "bedrock:InvokeModel",
+          ],
+          Resource: "*",
+        },
+      ],
+    }),
+  }).arn,
+});
+
+export const syncKnowledgeBaseFunction = new sst.aws.Function("sync-kb", {
+  handler: "packages/functions/src/sync-kb/lambda.handler",
+  runtime: "nodejs20.x",
+  environment: {
+    KNOWLEDGE_BASE_ID: process.env.KNOWLEDGE_BASE_ID || "placeholder-kb-id",
+    DATA_SOURCE_ID: process.env.DATA_SOURCE_ID || "placeholder-data-source-id",
+  },
+});
+
+new aws.iam.RolePolicyAttachment("sync-function-bedrock-policy", {
+  role: syncKnowledgeBaseFunction.nodes.function.role?.name!,
+  policyArn: new aws.iam.Policy("sync-function-bedrock", {
+    policy: JSON.stringify({
+      Version: "2012-10-17",
+      Statement: [
+        {
+          Effect: "Allow",
+          Action: [
+            "bedrock:StartIngestionJob",
+            "bedrock:AssociateThirdPartyKnowledgeBase",
+          ],
+          Resource: "*",
+        },
+      ],
+    }),
+  }).arn,
+});
+
+new aws.s3.BucketNotification("kb-bucket-notification", {
+  bucket: kbDocumentsBucket.name,
+  lambdaFunctions: [
+    {
+      lambdaFunctionArn: syncKnowledgeBaseFunction.arn,
+      events: ["s3:ObjectCreated:*", "s3:ObjectRemoved:*"],
     },
-  });
+  ],
+});
 
-  const web = new StaticSite(stack, "web", {
-    path: "packages/web",
-    buildOutput: "dist",
-    buildCommand: "npm run build",
-    environment: {
-      VITE_APP_PROMPT_URL: promptFunction.url ?? "",
-    },
-  });
+new aws.lambda.Permission("allow-s3-invoke-sync", {
+  statementId: "AllowS3Invoke",
+  action: "lambda:InvokeFunction",
+  function: syncKnowledgeBaseFunction.name,
+  principal: "s3.amazonaws.com",
+  sourceArn: kbDocumentsBucket.arn,
+});
 
-  stack.addOutputs({
-    promptUrl: promptFunction.url,
-    webUrl: web.url,
-  });
-}
+export const web = new sst.aws.Nextjs("web", {
+  path: "packages/web",
+  environment: {
+    NEXT_PUBLIC_PROMPT_URL: promptFunction.url,
+  },
+});
+
+export const outputs = {
+  promptUrl: promptFunction.url,
+  webUrl: web.url,
+};

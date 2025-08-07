@@ -1,14 +1,19 @@
-import { SSTConfig } from "sst";
-import { BedrockKbLambdaStack } from "./stacks/bedrock-kb-lambda-stack";
+/// <reference path="./.sst/platform/config.d.ts" />
 
-export default {
-  config(_input) {
+export default $config({
+  app(input) {
     return {
       name: "knowledge-base-lambda",
-      region: "us-east-1",
+      removal: input?.stage === "production" ? "retain" : "remove",
+      home: "aws",
+      providers: {
+        aws: {
+          region: "us-east-1",
+        },
+      },
     };
   },
-  stacks(app) {
-    app.stack(BedrockKbLambdaStack);
-  }
-} satisfies SSTConfig;
+  async run() {
+    await import("./stacks/bedrock-kb-lambda-stack");
+  },
+});

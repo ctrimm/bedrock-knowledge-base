@@ -3,31 +3,51 @@
 This is a proof of concept that uses Amazon Bedrock to create a chatbot.
 
 It uses: 
-- [SST](https://sst.dev/) to deploy everything to AWS.
-- [Pinecone](https://www.pinecone.io/) as vector database to use the free tier and avoid charges (you can use OpenSearch or a different vector database).
-- [Lambda functions](https://aws.amazon.com/lambda/) in Python via [boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html) to communicate to Amazon Bedrock.
+- SST v3 to deploy everything to AWS
+- Aurora PostgreSQL Serverless v2 with pgvector as vector database
+- Lambda functions in TypeScript with AWS SDK v3
+- NextJS for the web interface
 
 ## Architecture
 
-<img src="https://raw.githubusercontent.com/merojosa/knowledge-base-lambda/main/assets/architecture.png" />
-
+```mermaid
+graph TB
+    User[User] --> NextJS[NextJS Web App]
+    
+    NextJS --> PromptLambda[Prompt Lambda Function<br/>TypeScript + AWS SDK v3]
+    
+    Documents[Documents] --> S3[S3 Bucket<br/>bedrock-kb-documents]
+    S3 --> SyncLambda[Sync Lambda Function<br/>TypeScript + AWS SDK v3]
+    
+    S3 --> BedrockKB[Amazon Bedrock<br/>Knowledge Base]
+    SyncLambda --> BedrockKB
+    
+    BedrockKB --> Aurora[Aurora PostgreSQL<br/>Serverless v2 + pgvector]
+    BedrockKB --> TitanEmbed[Amazon Titan<br/>Embedding Model]
+    
+    PromptLambda --> BedrockAgent[Bedrock Agent Runtime<br/>RetrieveAndGenerate]
+    BedrockAgent --> BedrockKB
+    BedrockAgent --> Claude[Claude 3.5 Sonnet v2<br/>Foundation Model]
+    
+    BedrockAgent --> Response[Response with<br/>Citations]
+    Response --> NextJS
+    
+    classDef aws fill:#ff9900,stroke:#232f3e,stroke-width:2px,color:#fff
+    classDef user fill:#4285f4,stroke:#1a73e8,stroke-width:2px,color:#fff
+    classDef app fill:#0f9d58,stroke:#137333,stroke-width:2px,color:#fff
+    
+    class S3,BedrockKB,Aurora,TitanEmbed,BedrockAgent,Claude,SyncLambda,PromptLambda aws
+    class User user
+    class NextJS,Documents,Response app
+```
 
 ## Get started
 
 Setup your IAM credentials: [https://docs.sst.dev/advanced/iam-credentials](https://docs.sst.dev/advanced/iam-credentials)
 
-Create a `.env` in the root of the project with the Pinecone crendentials:
+Execute the following commands:
 
 ```
-PINECONE_API_KEY=your_api_key
-PINECONE_CONNECTION_STRING=your_host
-```
-
-Execute the following commands with pnpm:
-
-```
-pnpm install
-pnpm bundle-prompt
-pnpm bundle-sync-kb
-pnpm sst deploy --stage dev
+npm install
+npm run deploy
 ```
