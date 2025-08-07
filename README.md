@@ -47,7 +47,35 @@ Setup your IAM credentials: [https://docs.sst.dev/advanced/iam-credentials](http
 
 Execute the following commands:
 
-```
+```bash
+# Install dependencies
 npm install
+
+# For development (hot reload, local testing)
+npm run dev
+
+# For production deployment
 npm run deploy
+
+# Other useful commands:
+# npm run build    - Build the project
+# npm run remove   - Remove all AWS resources
+# npm run console  - Open SST console
 ```
+
+## Estimated Monthly Cost
+
+**⚠️ Cost Warning:** This architecture uses Aurora PostgreSQL Serverless v2 which can be expensive for proof-of-concept usage.
+
+**Estimated monthly costs (us-east-1):**
+- **Aurora Serverless v2**: $43-86/month (0.5-1.0 ACU minimum + storage)
+- **Lambda functions**: $1-5/month (depending on usage)
+- **Bedrock API calls**: $3-20/month (depending on query volume)
+- **S3 storage**: $1-3/month (document storage)
+
+**Total estimated: $48-114/month**
+
+For development/testing, consider:
+1. Using `npm run remove` when not actively developing
+2. Setting Aurora to minimum 0.5 ACU in the stack configuration
+3. Using a smaller pgvector dimension size if possible
